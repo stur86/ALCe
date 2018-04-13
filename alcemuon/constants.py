@@ -69,3 +69,40 @@ def magnetic_constant(elem, value='gamma', iso=None):
     else:
         raise RuntimeError('A valid installation of Soprano is necessary '
                            'for magnetic data of elements other than 1H')
+
+
+# Muon decay rate, microseconds
+muon_tau = 2.196
+
+# Spin one half operators (for convenience)
+_spin_half_ops = np.array([
+    [[0, 1],
+     [1, 0]],
+    [[0, -1.0j],
+     [1.0j, 0]],
+    [[1, 0],
+     [0, -1]]
+])*0.5
+
+
+def spin_operators(I=0.5):
+    # Return a numpy array containing the three operators Sx, Sy, Sz for a
+    # given spin of magnitude I, of size (3, 2*I+1, 2*I+1)
+
+    if I % 0.5 or I < 0.5:
+        raise ValueError('{0} is not a valid spin value'.format(I))
+
+    if I == 0.5:
+        return _spin_half_ops.copy()
+
+    moms = np.linspace(I, -I, int(2*I+1))
+
+    Sz = np.diag(moms)
+
+    Sp = np.diag(0.5*(np.cumsum(2*moms)[:-1]**0.5), k=1)
+    Sm = Sp.T
+
+    Sx = Sp+Sm
+    Sy = 1.0j*(-Sp+Sm)
+
+    return np.array([Sx, Sy, Sz])

@@ -38,3 +38,20 @@ def multikron(*m):
         return np.kron(*m)
     else:
         return np.kron(m[0], multikron(*m[1:]))
+
+def basis_transform(op, evecs, reverse=False):
+    # Operator basis transform. If evecs are eigenvectors of op, this will
+    # diagonalise op. If reverse is set to True, it works the other way.
+    if not reverse:
+        return np.dot(evecs.conj().T, np.dot(op, evecs))
+    else:
+        return np.dot(evecs, np.dot(op, evecs.conj().T))
+
+def make_rotation_matrix(ct, st, cp, sp):
+    # Create rotation matrix given cosines and sines of direction angles
+    # (ct = cos(theta), cp = cos(phi), st = sin(theta), sp = sin(phi))
+    return np.array([[cp*ct,  sp,  cp*st],
+                     [-sp*ct, cp, -sp*st],
+                     [-st,     0,  ct]])
+
+
