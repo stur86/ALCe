@@ -40,8 +40,8 @@ _nmr_basic = {
     'e': {
         'I': 0.5,
         'Q': 0,
-        'gamma': cnst.physical_constants['electron gyromag. '
-                                         'ratio over 2 pi'][0],
+        'gamma': -cnst.physical_constants['electron gyromag. '
+                                          'ratio over 2 pi'][0],
     },
     'mu': {
         'I': 0.5,
@@ -72,7 +72,7 @@ def magnetic_constant(elem, value='gamma', iso=None):
 
 
 # Muon decay rate, microseconds
-muon_tau = 2.196
+MUON_TAU = 2.196
 
 # Spin one half operators (for convenience)
 _spin_half_ops = np.array([

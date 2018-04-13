@@ -28,6 +28,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import numpy as np
+from alcemuon.constants import MUON_TAU
 
 
 def multikron(*m):
@@ -39,6 +40,7 @@ def multikron(*m):
     else:
         return np.kron(m[0], multikron(*m[1:]))
 
+
 def basis_transform(op, evecs, reverse=False):
     # Operator basis transform. If evecs are eigenvectors of op, this will
     # diagonalise op. If reverse is set to True, it works the other way.
@@ -46,6 +48,7 @@ def basis_transform(op, evecs, reverse=False):
         return np.dot(evecs.conj().T, np.dot(op, evecs))
     else:
         return np.dot(evecs, np.dot(op, evecs.conj().T))
+
 
 def make_rotation_matrix(ct, st, cp, sp):
     # Create rotation matrix given cosines and sines of direction angles
@@ -55,3 +58,34 @@ def make_rotation_matrix(ct, st, cp, sp):
                      [-st,     0,  ct]])
 
 
+def decay_intop(rho0, evals, evecs, tau_times, Sz):
+    # Compute decay with approximated integral operator
+    Dz = basis_transform(Sz, evecs)
+    rho = basis_transform(rho0, evecs)
+
+    lDiff = evals[:, None]-evals[None, :]
+    if tau_times is not None:
+        t = MUON_TAU*tau_times
+        exp_re = np.exp(-tau_times)
+        exp_im = np.exp(1.0j*lDiff*t)
+    else:
+        exp_re = 0.0
+        exp_im = 0.0
+
+    Oz = (Dz/((1.0j*lDiff)-1.0/MUON_TAU)*(
+        (exp_re*exp_im-1)/(
+            MUON_TAU*(1-exp_re))))
+
+    return np.real(np.dot(rho, Oz).trace())
+
+
+def split_hamiltonian(H):
+    # Produce eigenvalues/vectors for the two manifolds (up & down) of H
+    msize = int(H.shape[0]/2)
+    H2 = np.dot(H, H)
+    H2_u, H2_d = (H2[:msize, :msize],
+                  H2[msize:, msize:])
+    evals2_u, evecs_u = np.linalg.eigh(H2_u)
+    evals2_d, evecs_d = np.linalg.eigh(H2_d)
+
+    return evals2_u**0.5, evecs_u, evals2_d**0.5, evecs_d
