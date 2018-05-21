@@ -30,7 +30,7 @@ from __future__ import unicode_literals
 import numpy as np
 from alcemuon.utils import (multikron, make_rotation_matrix, split_hamiltonian,
                             decay_intop)
-from alcemuon.constants import spin_operators, magnetic_constant
+from alcemuon.constants import spin_operators, magnetic_constant, QCONST
 
 
 def _make_spin_arrays(spins, isotopes):
@@ -46,10 +46,13 @@ def _make_spin_arrays(spins, isotopes):
     _Is = np.array([magnetic_constant(s, iso=isotopes[i],
                                       value='I')
                     for i, s in enumerate(spins)])
-    _ops = np.array([spin_operators(_Is[i])
-                     for i, s in enumerate(spins)])
+    _Qs = np.array([magnetic_constant(s, iso=isotopes[i],
+                                      value='Q')
+                    for i, s in enumerate(spins)])
+    _ops = [spin_operators(_Is[i])
+            for i, s in enumerate(spins)]
 
-    return _spins, _isos, _gammas, _Is, _ops
+    return _spins, _isos, _gammas, _Is, _Qs, _ops
 
 
 class MuonHamiltonian(object):
@@ -62,12 +65,14 @@ class MuonHamiltonian(object):
         spins = ['e', 'mu'] + spins
         isotopes = [None]*2 + isotopes
 
-        _spins, _isos, _gammas, _Is, _ops = _make_spin_arrays(spins, isotopes)
+        _spins, _isos, _gammas, _Is, _Qs, _ops = _make_spin_arrays(spins,
+                                                                   isotopes)
 
         self._spins = _spins
         self._isos = _isos
         self._gammas = _gammas
         self._Is = _Is
+        self._Qs = _Qs
         self._spin_ops = _ops
 
         # First, projected size
@@ -97,17 +102,23 @@ class MuonHamiltonian(object):
         self._Hc = None
         self._H = None
 
-    def add_coupling(self, A, i, j):
-        # Add coupling between spins i and j with tensor A
+    def add_hyperfine_coupling(self, A, i):
+        # Add hyperfine coupling for spin i with tensor A
 
         A = np.array(A)
 
         if A.shape != (3, 3):
             raise ValueError('Invalid hyperfine tensor')
 
-        i, j = sorted([i, j])
+        self._ctens[(0, i)] = A + self._ctens.get((0, i), np.zeros((3, 3)))
 
-        self._ctens[(i, j)] = A
+    def add_quadrupolar_coupling(self, EFG, i):
+
+        EFG = np.array(EFG)
+
+        Q = QCONST*self._Qs[i]/(4*self._Is[i]*(2*self._Is[i]-1))*EFG
+
+        self._ctens[(i, i)] = Q + self._ctens.get((i, i), np.zeros((3, 3)))
 
     def _build_Hc(self, ct, st, cp, sp):
 
@@ -126,7 +137,7 @@ class MuonHamiltonian(object):
 
         return _Hc
 
-    def ALC(self, B_range, orients, weights, tau_times=6,
+    def ALC(self, B_range, orients, weights, tau_times=None,
             state={'mu': [1, 0]}, verbose=False, units='MHz',
             unsafe=False, split_e=False):
             # Create an ALC spectrum
@@ -155,9 +166,8 @@ class MuonHamiltonian(object):
         psi0 /= np.linalg.norm(psi0)
         rho0 = psi0[:, None]*psi0[None, :].conj()  # Density matrix
 
-
         if split_e:
-            muonSz = multikron(*self._spin_ops[1:,2])
+            muonSz = multikron(*[sop[2] for sop in self._spin_ops[1:]])
         else:
             muonSz = self._full_ops[2, 1]
 

@@ -73,6 +73,10 @@ def magnetic_constant(elem, value='gamma', iso=None):
 
 # Muon decay rate, microseconds
 MUON_TAU = 2.196
+# EFG to MHz constant for Quadrupole couplings
+# (the total quadrupole coupling in MHz is QCONST*Q*Vzz)
+QCONST = cnst.physical_constants['atomic unit of electric field '
+                                 'gradient'][0]*cnst.e*1e-37/cnst.h
 
 # Spin one half operators (for convenience)
 _spin_half_ops = np.array([
