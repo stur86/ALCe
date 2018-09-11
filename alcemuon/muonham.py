@@ -116,6 +116,9 @@ class MuonHamiltonian(object):
 
         EFG = np.array(EFG)
 
+        if EFG.shape != (3,3):
+            raise ValueError('Invalid electric field gradient tensor')
+
         Q = QCONST*self._Qs[i]/(4*self._Is[i]*(2*self._Is[i]-1))*EFG
 
         self._ctens[(i, i)] = Q + self._ctens.get((i, i), np.zeros((3, 3)))
