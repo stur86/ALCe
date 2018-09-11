@@ -28,6 +28,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import numpy as np
+import scipy.constants as cnst
 from alcemuon.utils import (multikron, make_rotation_matrix, split_hamiltonian,
                             decay_intop)
 from alcemuon.constants import spin_operators, magnetic_constant, QCONST
@@ -116,12 +117,29 @@ class MuonHamiltonian(object):
 
         EFG = np.array(EFG)
 
-        if EFG.shape != (3,3):
+        if EFG.shape != (3, 3):
             raise ValueError('Invalid electric field gradient tensor')
 
         Q = QCONST*self._Qs[i]/(4*self._Is[i]*(2*self._Is[i]-1))*EFG
 
         self._ctens[(i, i)] = Q + self._ctens.get((i, i), np.zeros((3, 3)))
+
+    def add_dipolar_coupling(self, r, i, j):
+        # Add dipolar coupling between spins i and j connected by vector r
+        # Distances expected in Angstroms
+
+        r = np.array(r)
+
+        if r.shape != (3,):
+            raise ValueError('Invalid connecting vector')
+
+        rnorm = np.linalg.norm(r)
+        D = -(np.eye(3) - 3.0/rnorm**2.0*r[:, None]*r[None, :])/2.0
+        dij = (- (cnst.mu_0*cnst.hbar*(self._gammas[i]*self._gammas[j]*1e12)) /
+               (2*(rnorm*1e-10)**3))
+        D *= dij
+
+        self._ctens[(i, j)] = D + self._ctens.get((i, j), np.zeros((3, 3)))
 
     def _build_Hc(self, ct, st, cp, sp):
 
