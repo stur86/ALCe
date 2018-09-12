@@ -27,6 +27,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import re
 import numpy as np
 import scipy.constants as cnst
 from alcemuon.utils import (multikron, make_rotation_matrix, split_hamiltonian,
@@ -56,15 +57,29 @@ def _make_spin_arrays(spins, isotopes):
     return _spins, _isos, _gammas, _Is, _Qs, _ops
 
 
+class HamiltonianError(Exception):
+    pass
+
+
 class MuonHamiltonian(object):
 
-    def __init__(self, spins=[], isotopes=[], unsafe=False):
+    def __init__(self, other_spins=[], isotopes=[], use_electron=True,
+                 unsafe=False):
 
-        if len(isotopes) == 0 and len(spins) > 0:
-            isotopes = [None]*len(spins)
+        if len(isotopes) == 0 and len(other_spins) > 0:
+            isotopes = [None]*len(other_spins)
+        elif len(isotopes) != len(other_spins):
+            raise ValueError('Invalid isotope list (should be as long as '
+                             'spin list)')
 
-        spins = ['e', 'mu'] + spins
-        isotopes = [None]*2 + isotopes
+        if use_electron:
+            spins = ['e', 'mu'] + other_spins
+            isotopes = [None]*2 + isotopes
+        else:
+            spins = ['mu'] + other_spins
+            isotopes = [None] + isotopes
+
+        self._has_e = use_electron
 
         _spins, _isos, _gammas, _Is, _Qs, _ops = _make_spin_arrays(spins,
                                                                    isotopes)
@@ -103,8 +118,49 @@ class MuonHamiltonian(object):
         self._Hc = None
         self._H = None
 
+    @property
+    def spins(self):
+        return self._spins
+
+    @property
+    def spin_table(self):
+        return dict(zip(self._spins, range(len(self._spins))))
+
+    def get_spin_index(self, spinsym):
+        spre = re.compile('([A-Za-z]{1,2})(:[0-9]+)?')
+        m = spre.match(spinsym)
+        if m is None:
+            raise ValueError('Invalid spin symbol')
+
+        s_el = m.groups()[0]
+        try:
+            s_i = int(m.groups()[1][1:])
+        except TypeError:
+            s_i = 0
+
+        if s_el not in self._spins:
+            raise ValueError('Spin not contained in system')
+
+        inds = np.where(s_el == np.array(self._spins))[0]
+
+        try:
+            return inds[s_i]
+        except IndexError:
+            raise ValueError('Spin index too great for system')
+
     def add_hyperfine_coupling(self, A, i):
         # Add hyperfine coupling for spin i with tensor A
+
+        if not self._has_e:
+            raise HamiltonianError('Muon Hamiltonian with no electron can not'
+                                   ' include hyperfine couplings')
+
+        # Is it a spin symbol?
+        try:
+            s_i = self.get_spin_index(i)
+            i = s_i
+        except TypeError:
+            pass
 
         A = np.array(A)
 
@@ -114,6 +170,13 @@ class MuonHamiltonian(object):
         self._ctens[(0, i)] = A + self._ctens.get((0, i), np.zeros((3, 3)))
 
     def add_quadrupolar_coupling(self, EFG, i):
+
+        # Is it a spin symbol?
+        try:
+            s_i = self.get_spin_index(i)
+            i = s_i
+        except TypeError:
+            pass
 
         EFG = np.array(EFG)
 
@@ -128,15 +191,29 @@ class MuonHamiltonian(object):
         # Add dipolar coupling between spins i and j connected by vector r
         # Distances expected in Angstroms
 
+        # Is it a spin symbol?
+        try:
+            s_i = self.get_spin_index(i)
+            i = s_i
+        except TypeError:
+            pass
+
+        # Is it a spin symbol?
+        try:
+            s_j = self.get_spin_index(j)
+            j = s_j
+        except TypeError:
+            pass
+
         r = np.array(r)
 
         if r.shape != (3,):
             raise ValueError('Invalid connecting vector')
 
         rnorm = np.linalg.norm(r)
-        D = -(np.eye(3) - 3.0/rnorm**2.0*r[:, None]*r[None, :])/2.0
+        D = -(np.eye(3) - 3.0/rnorm**2.0*r[:, None]*r[None, :])
         dij = (- (cnst.mu_0*cnst.hbar*(self._gammas[i]*self._gammas[j]*1e12)) /
-               (2*(rnorm*1e-10)**3))
+               (2*(rnorm*1e-10)**3))*1e-6 # MHz
         D *= dij
 
         self._ctens[(i, j)] = D + self._ctens.get((i, j), np.zeros((3, 3)))
@@ -162,6 +239,10 @@ class MuonHamiltonian(object):
             state={'mu': [1, 0]}, verbose=False, units='MHz',
             unsafe=False, split_e=False):
             # Create an ALC spectrum
+
+        if not self._has_e:
+            # No point in splitting anything...
+            split_e = False
 
         unitconv = {
             'T': 1.0,
@@ -190,7 +271,7 @@ class MuonHamiltonian(object):
         if split_e:
             muonSz = multikron(*[sop[2] for sop in self._spin_ops[1:]])
         else:
-            muonSz = self._full_ops[2, 1]
+            muonSz = self._full_ops[2, 0+self._has_e]
 
         for i, ((ct, st, cp, sp), w) in enumerate(zip(orients, weights)):
             if verbose:
