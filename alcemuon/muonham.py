@@ -213,7 +213,7 @@ class MuonHamiltonian(object):
         rnorm = np.linalg.norm(r)
         D = -(np.eye(3) - 3.0/rnorm**2.0*r[:, None]*r[None, :])
         dij = (- (cnst.mu_0*cnst.hbar*(self._gammas[i]*self._gammas[j]*1e12)) /
-               (2*(rnorm*1e-10)**3))*1e-6 # MHz
+               (2*(rnorm*1e-10)**3))*1e-6  # MHz
         D *= dij
 
         self._ctens[(i, j)] = D + self._ctens.get((i, j), np.zeros((3, 3)))
@@ -269,7 +269,9 @@ class MuonHamiltonian(object):
         rho0 = psi0[:, None]*psi0[None, :].conj()  # Density matrix
 
         if split_e:
-            muonSz = multikron(*[sop[2] for sop in self._spin_ops[1:]])
+            muonSz = multikron(*([self._spin_ops[0+self._has_e][2]] +
+                                 [np.eye(int(I*2+1))
+                                  for I in self._Is[1+self._has_e:]]))
         else:
             muonSz = self._full_ops[2, 0+self._has_e]
 
