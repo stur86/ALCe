@@ -30,6 +30,7 @@ from __future__ import unicode_literals
 import re
 import numpy as np
 import scipy.constants as cnst
+from alcemuon.pwdavg.pwd import tri_avg
 from alcemuon.utils import (multikron, make_rotation_matrix, split_hamiltonian,
                             decay_intop)
 from alcemuon.constants import spin_operators, magnetic_constant, QCONST
@@ -235,7 +236,7 @@ class MuonHamiltonian(object):
 
         return _Hc
 
-    def ALC(self, B_range, orients, weights, tau_times=None,
+    def ALC(self, B_range, orients, weights, tris=None, tau_times=None,
             state={'mu': [1, 0]}, verbose=False, units='MHz',
             unsafe=False, split_e=False):
             # Create an ALC spectrum
@@ -298,6 +299,9 @@ class MuonHamiltonian(object):
                 specs[i, j] /= len(manifolds)
 
         # Orientational average
-        full_spec = np.sum(specs*weights[:, None], axis=0)/np.sum(weights)
+        if tris is None:
+            full_spec = np.sum(specs*weights[:, None], axis=0)/np.sum(weights)
+        else:
+            full_spec = tri_avg(specs, weights, tris)
 
         return full_spec
