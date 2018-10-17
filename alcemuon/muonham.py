@@ -284,8 +284,9 @@ class MuonHamiltonian(object):
             # Get the hyperfine component
             _Hc = self._build_Hc(ct, st, cp, sp)
             for j, B in enumerate(B_range):
-                # Total Hamiltonian?
-                H_tot = self._Hz*B*unitconv[units]+_Hc
+                # Total Hamiltonian needs to be in pulsation, not frequency,
+                # to work in decay_intop
+                H_tot = (self._Hz*B*unitconv[units]+_Hc)*2*np.pi 
                 manifolds = []
                 if split_e:
                     eu, evu, ed, evd = split_hamiltonian(H_tot)
