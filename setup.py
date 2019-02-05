@@ -72,6 +72,10 @@ if __name__ == '__main__':
           packages=find_packages(),
           # For data files. Example: 'soprano': ['data/*.json']
           package_data={'alcemuon': ['data/*.json', 'data/*.dat']},
+          entry_points={
+              'console_scripts': ['magres2alc = '
+                                  'alcemuon.scripts.magres2alc:main']
+          },          
           # Requirements
           install_requires=[
               'numpy',
