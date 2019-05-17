@@ -24,3 +24,5 @@ from __future__ import absolute_import
 
 # Version definition
 __version__ = '0.1'
+
+from alcemuon.muonham import MuonHamiltonian
