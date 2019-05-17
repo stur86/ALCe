@@ -81,6 +81,6 @@ def get_orient_set(lower_N):
     and have been created by Marina Carravetta.
     """
     
-    keys = _OurLebSets.keys()
+    keys = list(_OurLebSets.keys())
     diffs = np.array(keys) - lower_N
     return _OurLebSets[sorted(diffs[np.where(diffs >= 0)] + lower_N)[0]]

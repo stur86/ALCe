@@ -224,11 +224,11 @@ class MuonHamiltonian(object):
         # Build Hamiltonian with given orientation angles
         rotm = make_rotation_matrix(ct, st, cp, sp)
         rotc = {k: np.einsum('ji,jk,kl', rotm, c, rotm)
-                for k, c in self._ctens.iteritems()}
+                for k, c in self._ctens.items()}
 
         _Hc = self._Hz*0.0
 
-        for (i, j), c in rotc.iteritems():
+        for (i, j), c in rotc.items():
             _Hc += np.einsum('pjl,pq,qli',
                              self._full_ops[:, i, :, :],
                              c,
