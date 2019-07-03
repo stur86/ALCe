@@ -64,4 +64,4 @@ def get_orient_set(lower_N, mode='sphere'):
     ct = zcw_c[0]*(zcw_c[1]*np.mod(n/zcw_Nf, 1.0)-1.0)
     st = (1.0-ct**2)**0.5
 
-    return np.array(zip(ct, st, cp, sp)), np.ones(len(phi))/len(phi)
+    return np.array(list(zip(ct, st, cp, sp))), np.ones(len(phi))/len(phi)
